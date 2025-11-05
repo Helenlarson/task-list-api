@@ -3,7 +3,7 @@ from .route_utilities import validate_model
 from ..models.task import Task
 from ..db import db
 
-# use o mesmo nome (tasks_bp) em tudo
+
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
 @tasks_bp.post("")
@@ -16,20 +16,20 @@ def create_task():
     new_task = Task(
         title=request_body["title"],
         description=request_body["description"],
-        completed_at=None,
+        completed_at=request_body.get("completed_at") 
     )
 
-    db.session.add(new_tasks)
+    db.session.add(new_task)
     db.session.commit()
 
     response = {
         "id": new_task.id,
         "title": new_task.title,
         "description": new_task.description,
-        "is_completed": False,
+        "is_complete": new_task.completed_at is not None,
     }
-
     return response, 201
+
 
 @tasks_bp.get("")
 def get_tasks():
@@ -41,7 +41,7 @@ def get_tasks():
             "id": task.id,
             "title": task.title,
             "description": task.description,
-            "is_completed": task.completed_at is not None,
+            "is_complete": task.completed_at is not None,
         })
 
     return response, 200
@@ -53,7 +53,7 @@ def get_task(task_id):
         "id": task.id,
         "title": task.title,
         "description": task.description,
-        "is_completed": task.completed_at is not None,
+        "is_complete": task.completed_at is not None,
     }
 
     return response, 200
