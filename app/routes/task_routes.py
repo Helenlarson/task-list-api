@@ -1,4 +1,5 @@
 from flask import Blueprint, request, make_response, abort
+from .route_utilities import validate_model
 from ..models.task import Task
 from ..db import db
 
@@ -71,3 +72,25 @@ def update_task(task_id):
     db.session.commit()
 
     return make_response("", 204)
+
+@tasks_bp.delete("/<task_id>")
+def delete_task(task_id):
+    task = validate_model(Task, task_id)
+
+    db.session.delete(task)
+    db.session.commit()
+
+    return make_response("", 204)
+
+def validate_model(cls, model_id):
+    try:
+        model_id = int(model_id)
+    except:
+        abort(make_response({"message": f"{cls.__name__} {model_id} invalid"}, 400))
+
+    model = db.session.get(cls, model_id)
+
+    if not model:
+        abort(make_response({"message": f"{cls.__name__} {model_id} not found"}, 404))
+
+    return model
