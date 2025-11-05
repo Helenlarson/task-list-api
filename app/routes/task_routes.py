@@ -54,5 +54,20 @@ def get_task(task_id):
         "description": task.description,
         "is_completed": task.completed_at is not None,
     }
-    
+
     return response, 200
+
+@tasks_bp.put("/<task_id>")
+def update_task(task_id):
+    task = validate_model(Task, task_id)
+    request_body = request.get_json()
+
+    if "title" not in request_body or "description" not in request_body:
+        return {"details": "Invalid data"}, 400
+
+    task.title = request_body["title"]
+    task.description = request_body["description"]
+
+    db.session.commit()
+
+    return make_response("", 204)
