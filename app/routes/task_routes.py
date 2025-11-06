@@ -1,8 +1,9 @@
-from flask import Blueprint, request, make_response
-from .route_utilities import validate_model
-from sqlalchemy import asc, desc
 from app.models.task import Task
 from ..db import db
+from flask import Blueprint, request, make_response
+from sqlalchemy import asc, desc
+from datetime import datetime
+from app.routes.route_utilities import validate_model
 
 tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 
@@ -35,7 +36,6 @@ def get_tasks():
     elif sort == "desc":
         query = query.order_by(desc(Task.title))
 
-    # Use the built query (not db.select(Task) again)
     tasks = db.session.scalars(query).all()
     return [task.to_dict() for task in tasks], 200
 
@@ -67,3 +67,23 @@ def delete_task(task_id):
     db.session.delete(task)
     db.session.commit()
     return make_response("", 204)
+
+@tasks_bp.patch("/<task_id>/mark_complete")
+def mark_task_complete(task_id):
+    task = validate_model(Task, task_id)
+    task.completed_at = datetime.utcnow()
+    db.session.commit()
+
+    response = make_response("", 204)
+    response.mimetype = "application/json"
+    return response
+
+@tasks_bp.patch("/<task_id>/mark_incomplete")
+def mark_task_incomplete(task_id):
+    task = validate_model(Task, task_id)
+    task.completed_at = None
+    db.session.commit()
+
+    response = make_response("", 204)
+    response.mimetype = "application/json"
+    return response
