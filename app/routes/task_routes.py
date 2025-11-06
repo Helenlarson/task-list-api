@@ -4,6 +4,9 @@ from flask import Blueprint, request, make_response
 from sqlalchemy import asc, desc
 from datetime import datetime
 from app.routes.route_utilities import validate_model
+import os
+import requests
+
 
 tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 
@@ -73,6 +76,16 @@ def mark_task_complete(task_id):
     task = validate_model(Task, task_id)
     task.completed_at = datetime.utcnow()
     db.session.commit()
+
+    slack_token = os.environ.get("SLACK_API_KEY")
+    slack_channel = "task-notifications"
+    slack_message = f"Task '{task.title}' has been marked complete."
+
+    request.post(
+        "https://slack.com/api/chat.postMessage",
+        headers={"Authorization": f"Bearer {slack_token}"},
+        json={"channel": slack_channel, "text": slack_message}
+    )
 
     response = make_response("", 204)
     response.mimetype = "application/json"
