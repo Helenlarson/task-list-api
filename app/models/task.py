@@ -1,28 +1,36 @@
 # app/models/task.py
-from sqlalchemy.orm import Mapped, mapped_column
+from __future__ import annotations
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import ForeignKey
 from typing import Optional, Dict, Any
 from datetime import datetime
 from ..db import db
 
 class Task(db.Model):
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    title: Mapped[Optional[str]] = mapped_column(nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    __tablename__ = "task"
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Task":
-        # Use indexing to intentionally raise KeyError when missing
-        return cls(
-            title=data["title"],
-            description=data["description"],
-            completed_at=data.get("completed_at"),
-        )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    title: Mapped[str]
+    description: Mapped[Optional[str]]
+    completed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    goal_id: Mapped[Optional[int]] = mapped_column(ForeignKey("goal.id"), nullable=True)
+    goal: Mapped[Optional["Goal"]] = relationship(back_populates="tasks")
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        task_dict = {
             "id": self.id,
             "title": self.title,
             "description": self.description,
-            "is_complete": self.completed_at is not None,
+            "is_complete": bool(self.completed_at)
         }
+        if self.goal_id:
+            task_dict["goal_id"] = self.goal_id
+        return task_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Task":
+        return cls(
+            title=data["title"],
+            description=data.get("description"),
+            completed_at=None
+        )
