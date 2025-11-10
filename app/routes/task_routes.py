@@ -1,97 +1,23 @@
-from app.models.task import Task
-from ..db import db
-from flask import Blueprint, request, make_response, request
-from sqlalchemy import asc, desc
-from datetime import datetime
-from app.routes.route_utilities import validate_model
+from flask import Flask
+from .db import db, migrate
+from .models import task, goal
+from .routes.task_routes import bp as tasks_bp
+from .routes.goal_routes import bp as goals_bp
 import os
-import requests
 
+def create_app(config=None):
+    app = Flask(__name__)
 
-tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
 
-@tasks_bp.post("")
-def create_task():
-    request_body = request.get_json() or {}
+    if config:
+        app.config.update(config)
 
-    if "title" not in request_body or "description" not in request_body:
-        return {"details": "Invalid data"}, 400
+    db.init_app(app)
+    migrate.init_app(app, db)
 
-    new_task = Task(
-        title=request_body["title"],
-        description=request_body["description"],
-        completed_at=request_body.get("completed_at")
-    )
+    app.register_blueprint(tasks_bp)
+    app.register_blueprint(goals_bp)
 
-    db.session.add(new_task)
-    db.session.commit()
-
-    return new_task.to_dict(), 201
-
-
-@tasks_bp.get("")
-def get_tasks():
-    sort = request.args.get("sort")
-    query = db.select(Task)
-
-    if sort == "asc":
-        query = query.order_by(asc(Task.title))
-    elif sort == "desc":
-        query = query.order_by(desc(Task.title))
-
-    tasks = db.session.scalars(query).all()
-    return [task.to_dict() for task in tasks], 200
-
-
-@tasks_bp.get("/<task_id>")
-def get_task(task_id):
-    task = validate_model(Task, task_id)
-    return task.to_dict(), 200
-
-
-@tasks_bp.put("/<task_id>")
-def update_task(task_id):
-    task = validate_model(Task, task_id)
-    request_body = request.get_json() or {}
-
-    if "title" not in request_body or "description" not in request_body:
-        return {"details": "Invalid data"}, 400
-
-    task.title = request_body["title"]
-    task.description = request_body["description"]
-
-    db.session.commit()
-    return make_response("", 204)
-
-
-@tasks_bp.delete("/<task_id>")
-def delete_task(task_id):
-    task = validate_model(Task, task_id)
-    db.session.delete(task)
-    db.session.commit()
-    return make_response("", 204)
-
-@tasks_bp.patch("/<task_id>/mark_complete")
-def mark_task_complete(task_id):
-    task = validate_model(Task, task_id)
-    task.completed_at = datetime.utcnow()
-    db.session.commit()
-
-    # Wave 4: notificação (os testes já fazem mock de requests.post)
-    webhook = os.environ.get("SLACK_WEBHOOK_URL")
-    if webhook:
-        try:
-            requests.post(webhook, json={"text": f"Task completed: {task.title}"}, timeout=2)
-        except Exception:
-            # Não deixe a notificação quebrar a rota/teste
-            pass
-
-    return make_response("", 204)
-
-
-@tasks_bp.patch("/<task_id>/mark_incomplete")
-def mark_task_incomplete(task_id):
-    task = validate_model(Task, task_id)
-    task.completed_at = None
-    db.session.commit()
-    return make_response("", 204)
+    return app
