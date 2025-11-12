@@ -1,5 +1,7 @@
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey
+# app/models/task.py
+from sqlalchemy.orm import Mapped, mapped_column
+from typing import Optional, Dict, Any
+from datetime import datetime
 from ..db import db
 from typing import Optional
 from datetime import datetime
