@@ -31,6 +31,8 @@ class Task(db.Model):
     def from_dict(cls, data: Dict[str, Any]) -> "Task":
         return cls(
             title=data["title"],
-            description=data.get("description"),
+            description=data["description"],
             completed_at=None
         )
+    
+

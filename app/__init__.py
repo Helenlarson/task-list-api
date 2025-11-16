@@ -1,5 +1,5 @@
 from flask import Flask
-from flask_migrate import Migrate          # ✅ Import do Migrate
+from flask_migrate import Migrate          
 from .db import db
 from .models import task, goal
 from .routes.task_routes import tasks_bp
@@ -16,7 +16,7 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     db.init_app(app)
-    migrate = Migrate(app, db)             # ✅ Inicializa o Migrate
+    migrate = Migrate(app, db)             
 
     app.register_blueprint(tasks_bp)
     app.register_blueprint(goals_bp)

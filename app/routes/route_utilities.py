@@ -5,9 +5,12 @@ def validate_model(model_class, model_id):
     try:
         model_id = int(model_id)
     except ValueError:
-        abort(make_response({"details": f"{model_class.__name__} {model_id} invalid"}, 400))
+        abort(make_response({"message": f"{model_class.__name__} {model_id} invalid"}, 400))
 
     instance = model_class.query.get(model_id)
     if not instance:
-        abort(make_response({"details": f"{model_class.__name__} {model_id} not found"}, 404))
+        abort(make_response({"message": f"{model_class.__name__} {model_id} not found"}, 404))
     return instance
+
+def create_model(model_date):
+    pass

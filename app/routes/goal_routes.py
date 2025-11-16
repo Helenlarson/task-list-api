@@ -44,3 +44,18 @@ def get_tasks_by_goal(goal_id):
     response = goal.to_dict()
     response["tasks"] = [t.to_dict() for t in goal.tasks]
     return response
+
+@goals_bp.get("/<goal_id>")
+def get_one_goal(goal_id):
+    goal = validate_model(Goal, goal_id)
+    return goal.to_dict()
+
+@goals_bp.put("/<goal_id>")
+def update_goal_title(goal_id):
+    goal = validate_model(Goal, goal_id)
+    body = request.get_json() or {}
+    if "title" not in body or not body["title"]:
+        return {"details": "Invalid data"}, 400
+    goal.title = body["title"]
+    db.session.commit()
+    return goal.to_dict()
