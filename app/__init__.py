@@ -1,25 +1,24 @@
 from flask import Flask
-from flask_migrate import Migrate          
-from .db import db
+from .db import db, migrate
 from .models import task, goal
-from .routes.task_routes import tasks_bp
-from .routes.goal_routes import goals_bp
+from .routes.task_routes import bp as task_bp
+from .routes.goal_routes import bp as goal_bp
 import os
 
-def create_app(test_config=None):
+def create_app(config=None):
     app = Flask(__name__)
 
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
 
-    if test_config:
-        app.config.update(test_config)
+    if config:
+        app.config.update(config)
 
     db.init_app(app)
-    migrate = Migrate(app, db)             
+    migrate.init_app(app, db)
 
-    app.register_blueprint(tasks_bp)
-    app.register_blueprint(goals_bp)
+    app.register_blueprint(task_bp)
+    app.register_blueprint(goal_bp)
 
     return app
 

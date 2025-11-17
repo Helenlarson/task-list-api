@@ -1,97 +1,84 @@
+from flask import Blueprint, request, Response
 from app.models.task import Task
 from ..db import db
-from flask import Blueprint, request, make_response, request
-from sqlalchemy import asc, desc
 from datetime import datetime
-from app.routes.route_utilities import validate_model
-import os
 import requests
+import os
+from .route_utilities import validate_model, create_model, get_models_with_filters
 
+bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 
-tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
-
-@tasks_bp.post("")
+@bp.post("")
 def create_task():
-    request_body = request.get_json() or {}
-
-    if "title" not in request_body or "description" not in request_body:
-        return {"details": "Invalid data"}, 400
-
-    new_task = Task(
-        title=request_body["title"],
-        description=request_body["description"],
-        completed_at=request_body.get("completed_at")
-    )
-
-    db.session.add(new_task)
-    db.session.commit()
-
-    return new_task.to_dict(), 201
+    
+    request_body = request.get_json()
+    return create_model(Task, request_body)
 
 
-@tasks_bp.get("")
-def get_tasks():
-    sort = request.args.get("sort")
-    query = db.select(Task)
-
-    if sort == "asc":
-        query = query.order_by(asc(Task.title))
-    elif sort == "desc":
-        query = query.order_by(desc(Task.title))
-
-    tasks = db.session.scalars(query).all()
-    return [task.to_dict() for task in tasks], 200
+@bp.get("")
+def get_all_tasks():
+    
+    return get_models_with_filters(Task, request.args)
 
 
-@tasks_bp.get("/<task_id>")
-def get_task(task_id):
+@bp.get("/<task_id>")
+def get_one_task(task_id):
+
     task = validate_model(Task, task_id)
-    return task.to_dict(), 200
+    return task.to_dict()
 
 
-@tasks_bp.put("/<task_id>")
+@bp.put("/<task_id>")
 def update_task(task_id):
     task = validate_model(Task, task_id)
-    request_body = request.get_json() or {}
-
-    if "title" not in request_body or "description" not in request_body:
-        return {"details": "Invalid data"}, 400
+    request_body = request.get_json()
 
     task.title = request_body["title"]
     task.description = request_body["description"]
-
-    db.session.commit()
-    return make_response("", 204)
-
-
-@tasks_bp.delete("/<task_id>")
-def delete_task(task_id):
-    task = validate_model(Task, task_id)
-    db.session.delete(task)
-    db.session.commit()
-    return make_response("", 204)
-
-@tasks_bp.patch("/<task_id>/mark_complete")
-def mark_task_complete(task_id):
-    task = validate_model(Task, task_id)
-    task.completed_at = datetime.utcnow()
+    
     db.session.commit()
 
-    # Wave 4: notificação (os testes já fazem mock de requests.post)
-    webhook = os.environ.get("SLACK_WEBHOOK_URL")
-    if webhook:
-        try:
-            requests.post(webhook, json={"text": f"Task completed: {task.title}"}, timeout=2)
-        except Exception:
-            # Não deixe a notificação quebrar a rota/teste
-            pass
-
-    return make_response("", 204)
+    return Response(status=204, mimetype="application/json")
 
 
-@tasks_bp.patch("/<task_id>/mark_incomplete")
-def mark_task_incomplete(task_id):
+@bp.patch("/<task_id>/mark_complete")
+def mark_complete_task(task_id):
     task = validate_model(Task, task_id)
+
+    task.completed_at = datetime.now()
+    db.session.commit()
+
+
+    url = "https://slack.com/api/chat.postMessage"
+    data = {
+        "text": f"Someone just completed the task {task.title}",
+        "channel": "test-slack-api"
+    }
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f"Bearer {os.environ.get('SLACK_BOT_TOKEN')}"
+    }
+    requests.post(url, headers=headers, json=data)
+
+
+    return Response(status=204, mimetype="application/json")
+
+
+@bp.patch("/<task_id>/mark_incomplete")
+def mark_incomplete_task(task_id):
+    task = validate_model(Task, task_id)
+
     task.completed_at = None
     db.session.commit()
-    return make_response("", 204)
+
+    return Response(status=204, mimetype="application/json")
+
+
+@bp.delete("/<task_id>")
+def delete_task(task_id):
+    task = validate_model(Task, task_id)
+
+    db.session.delete(task)
+    db.session.commit()
+
+    return Response(status=204, mimetype="application/jason")
